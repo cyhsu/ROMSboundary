@@ -1,0 +1,9 @@
+20190218 115543.945 ERROR            PET0 ESMF_IO.F90:397 ESMF_IOAddArray() Unable to read from file  - Internal subroutine call returned Error
+20190218 115543.946 ERROR            PET0 ESMF_FieldPr.F90:346 ESMF_FieldRead Unable to read from file  - Internal subroutine call returned Error
+20190218 115543.946 ERROR            PET0 ESMF_Field_C.F90:794 f_esmf_fieldread Unable to read from file  - Internal subroutine call returned Error
+20190218 115547.268 ERROR            PET0 ESMF_IO.F90:397 ESMF_IOAddArray() Unable to read from file  - Internal subroutine call returned Error
+20190218 115547.268 ERROR            PET0 ESMF_FieldPr.F90:346 ESMF_FieldRead Unable to read from file  - Internal subroutine call returned Error
+20190218 115547.268 ERROR            PET0 ESMF_Field_C.F90:794 f_esmf_fieldread Unable to read from file  - Internal subroutine call returned Error
+20190218 115645.547 ERROR            PET0 ESMF_IO.F90:397 ESMF_IOAddArray() Unable to read from file  - Internal subroutine call returned Error
+20190218 115645.547 ERROR            PET0 ESMF_FieldPr.F90:346 ESMF_FieldRead Unable to read from file  - Internal subroutine call returned Error
+20190218 115645.547 ERROR            PET0 ESMF_Field_C.F90:794 f_esmf_fieldread Unable to read from file  - Internal subroutine call returned Error

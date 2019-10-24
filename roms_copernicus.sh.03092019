@@ -1,0 +1,170 @@
+#!/bin/bash
+#-   Downloading the Marine Copernicus analysis and forecast data  
+#-       - horizontal resolution : 0.083 x 0.083
+#-       - temporal resolution : daily-mean
+#-       - vertical resolution : 75 layers
+#-       - from today to 9 days after
+#---
+#--- @C.Y. Hsu (2017-09-20)
+#===================================================================
+
+#--  B4 initial the code  --
+#- 1 : turn on python run  -
+#- 0 : turn off python run -
+debug_dw_python=0 #-- dw : download copernicus data
+debug_ic_python=0 #-- ic : initial condition
+debug_bc_python=0 #-- bc : boundary condition 
+debug_xr_python=0 #-- xr : xroms regridding
+##-- 01 --  PARAMETERS from cpl_gom.sh  --
+t0=`date -d "$1 1 days ago" +"%F %H:00:00"`
+t1=`date -d "$2 2 days" +"%F %H:00:00"`
+dirc=run_"$3"
+
+echo '	roms_download (time in) : ' $t0
+echo '	roms_download (time ot) : ' $t1
+echo '	roms_download (dirc   ) : ' $dirc
+echo '  '
+
+DEFU_DIR=`pwd`
+WORK_DIR=$DEFU_DIR/ocn
+
+##--  ENVIRONMENTAL SET UP  --
+module purge
+module load intel/2015a netCDF-Fortran/4.4.0-intel-2015a Anaconda/2-4.0.0 
+source activate chsu1
+export PYROMS_GRIDID_FILE=$WORK_DIR/grid/gridid.txt
+
+##--  PARAMETER SET UP : ..download process.. --
+motu_dir='/home/chsu1/scratch/GOM_FORECAST/ocn/Copernicus/motu-client-python/'
+motu_py=$motu_dir"motu-client.py"
+username='chsu1'; password='Gisr@2017'
+http_m='http://nrtcmems.mercator-ocean.fr/motu-web/Motu'
+http_s='GLOBAL_ANALYSIS_FORECAST_PHY_001_024-TDS'
+http_d='global-analysis-forecast-phy-001-024'
+leftlow_corner_lon=-101
+leftlow_corner_lat=10 
+rightup_corner_lon=-75
+rightup_corner_lat=35
+z0=0.5057; z1=5902.0583
+var0='zos'; var1='thetao'; var2='so'; var3='uo'; var4='vo'
+odir=$WORK_DIR/input/previous 
+ofile=`echo $t0"_"$t1".nc"| sed -s 's/ ..:00:00//g'| sed -s 's/-//g'`
+svr_info="-u $username -p $password -m $http_m -s $http_s -d $http_d"
+dom_info="-x $leftlow_corner_lon -X $rightup_corner_lon"
+dom_info="$dom_info -y $leftlow_corner_lat -Y $rightup_corner_lat"
+dim_info="-t $t0 -T $t1 -z $z0 -Z $z1"
+var_info="-v $var0 -v $var1 -v $var2 -v $var3 -v $var4"
+if [ $debug_dw_python == 1 ]; then 
+	##-- DOWNLOAD : ..Copernicus analysis/forecast data.. --
+	echo " python $motu_py $svr_info $dom_info $dim_info $var_info -o $odir -f $ofile"
+	echo " "
+	python $motu_py $svr_info $dom_info $dim_info $var_info -o $odir -f $ofile
+
+	##- .. Record the simulation ..
+	echo ' '; echo ' '
+	ftime=`ls -l $odir/$ofile | awk '{print $6 $7}'`
+	ftime=`date -d $ftime +%b%d`
+	ntime=`date +%b%d`
+	if [ $ntime == $ftime ]; then 
+		echo "Processing the simulation begins from "`date +%F ` "successful."
+	else 
+		echo "Processing the simulation begins from "`date +%F ` " UNSUCCESSFUL."
+	exit 1
+	fi
+fi
+echo ' '; echo ' '
+
+##- .. POST-PROCESS for PYROMS ..
+echo '	Rename the variables ...... on'; echo ' '
+cd $WORK_DIR
+nfile='./input/copernicus_forecast.nc'
+ncrename -d longitude,lon -v longitude,lon "$odir"/"$ofile" "$nfile"
+ncrename -d latitude,lat -v latitude,lat "$nfile"
+ncrename -d depth,z -v depth,z "$nfile"
+ncrename -d time,ocean_time -v time,ocean_time "$nfile"
+ncrename -v thetao,temp -v so,salt -v uo,u -v vo,v -v zos,ssh "$nfile"
+ncks -O -d lon,1,-2 -d lat,1,-2 "$nfile" "$nfile"
+ncks -O --fix_rec_dmn ocean_time $nfile $nfile
+
+num=`ncdump -h $nfile |grep ocean_time|head -1|awk '{print $3}'`
+for tid in $(eval echo {0..$((num-1))})
+do
+	nfid=`printf ./input/copernicus_forecast_%02d.nc $tid`
+	ncks -O -h -d ocean_time,$tid $nfile $nfid
+done
+ti=`date -d "$1" +"%F %H:00:00"`
+tim_ini_hour=`date -d "$1" +"%F %H:00:00"`
+if [ "$tim_ini_hour" == "00" ]; then 
+	cd input
+	ncra copernicus_forecast_00.nc copernicus_forecast_01.nc copernicus_forecast_01.nc
+fi
+
+##--  XROMS SST update  --
+if [ $debug_xr_python == 1 ]; then 
+  ./shell/xroms.sh
+fi
+
+
+##--  PYROMS RUN  --
+if [ ! -f ./grid/copernicus_grid.nc ]; then 
+	echo '...The Grid File of copernicus is not existed...'
+	echo 'So, boy, do you want to create one by me or do it by yourself?'
+	read -p 'Yes -- me, No -- yourself : ' grid_answer
+	if [ 'Yes' == "$grid_answer" ]; then 
+		grid_nc='./grid/copernicus_grid.nc'	
+		ncrename -d longitude,lon -v longitude,lon "$odir"/"$ofile" "$grid_nc"
+		ncrename -d latitude,lat -v latitude,lat "$grid_nc"
+		ncrename -d depth,z -v depth,z "$grid_nc"
+		ncrename -d time,ocean_time -v time,ocean_time "$grid_nc"
+		ncrename -v thetao,temp -v so,salt -v uo,u -v vo,v -v zos,ssh "$grid_nc"
+		ncks -O -d ocean_time,0 -v temp "$grid_nc" "$grid_nc"
+		ipython make_remap_weights_file.py
+	else
+		echo '!! The size of the grid point (x-1:x+1,y-1:y+1) is larger than data point (x,y) !!'
+		echo '!! Run "make_remap_weights_file.py" before working on ini/bdry condition.'
+		exit 1
+	fi
+fi
+
+if [ $debug_ic_python == 1 ]; then 
+	echo " "; echo " "; echo "...  Build initial condition for ROMS  ..."
+	ipython make_ic_file.py
+	cd ic_bdry
+	mv ./*_??_ic_GOM_Copernicus.nc ./copernicus_forecast_ic_GOM_Copernicus.nc
+	cd ..
+fi
+
+if [ $debug_bc_python == 1 ]; then 
+	echo " "; echo " "; echo "...  Build boundary condition for ROMS  ..."
+	ipython make_bdry_file.py
+	outnc='./ic_bdry/copernicus_forecast_bdry_GOM_Copernicus.nc'
+	ncrcat -O -h ./ic_*/*_??_bd*nc $outnc
+fi
+
+##--  revise routine_run_01.ocn.in ((i.e. ocean.in))  --
+cp routine_run_01.ocn.in.sample routine_run_01.ocn.in
+hh=`awk "BEGIN {print $(date -d "$t0" +%H)/24}" |sed 's/0.//'`
+TIME_REF=`date -d "$t0" +%Y%m%d`"."$hh
+sed -i "s/20170922.5/$TIME_REF/g" routine_run_01.ocn.in 
+
+##--  Revise ocean_time for ini/bdry  --
+ic_time=`date -d "$1" +"%F 12:00:00"`
+cp ic_bdry.py.sample ic_bdry.py
+sed -i "s/2017-01-01 12:00:00/${ic_time}/g" ic_bdry.py
+ipython ic_bdry.py
+
+mkdir -p "${WORK_DIR}/${dirc}"
+cp "${WORK_DIR}/ic_bdry/*.nc ${WORK_DIR}/${dirc}/. "
+
+##--  Remove all generated unnecessary files
+rm -rf ./input/coper*.nc
+rm -rf ./ic_*/*_??_bdry*nc
+rm $nfile
+
+
+##-- Success the processing message
+echo "	Done!! Finish all of the ocean process"
+echo '	Friendly remind the information'
+echo '	roms_download (time in) : ' $t0
+echo '	roms_download (time ot) : ' $t1
+echo '	roms_download (dirc   ) : ' "${WORK_DIR}/${dirc}"
