@@ -4,9 +4,10 @@
 #--  Goal: Copernicus Parameter Setup
 #--
 #--  @C.Y. Hsu at Texas A&M Univ, Mar 06 2019
-motu_dir='/home/chsu1/scratch/GOM_FORECAST/ocn/Copernicus/motu-client-python/'
+motu_dir='LOCATION_OF_YOUR_MARINE_COPERNICUS_MOTO_CLIENT_PYTHON_API'
 motu_py=$motu_dir"motu-client.py"
-username='chsu1'; password='Gisr@2017'
+username='YOUR_USER_NAME'; 
+password='YOUR_PASSWORD'
 http_m='http://nrtcmems.mercator-ocean.fr/motu-web/Motu'
 http_s='GLOBAL_ANALYSIS_FORECAST_PHY_001_024-TDS'
 http_d='global-analysis-forecast-phy-001-024'
