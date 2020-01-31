@@ -23,3 +23,5 @@ Requirements:
   3. YOUR ROMS Grid File
   
   
+
+[![DOI](https://zenodo.org/badge/217359291.svg)](https://zenodo.org/badge/latestdoi/217359291)
