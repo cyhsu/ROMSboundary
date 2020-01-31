@@ -24,4 +24,6 @@ Requirements:
   
   
 
+##### citation
+C.Y. Hsu. (2020, January 31). cyhsu/ROMSboundary: ROMSboundary (Version v1.0). Zenodo. http://doi.org/10.5281/zenodo.3633183
 [![DOI](https://zenodo.org/badge/217359291.svg)](https://zenodo.org/badge/latestdoi/217359291)
